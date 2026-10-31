@@ -1,58 +1,48 @@
-const CACHE_NAME = 'pwa-cache-v1';
-const PRECACHE_URLS = [
- "./",
+const CACHE_NAME = 'pwa-cache-v2';
+const APP_SHELL = [
+  "./",
   "./index.html",
   "./offline.html
 ];
 
-// Instala e faz o precache
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .catch(() => {}) // não bloqueia a instalação se o precache falhar
   );
-  self.skipWaiting(); // ativa imediatamente após instalação
 });
 
-// Ativa e limpa caches antigos
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Estratégia: Stale-While-Revalidate
 self.addEventListener('fetch', (event) => {
-  // Só lida com GET
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          // Atualiza o cache
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        })
-        .catch(() => {
-          // Se offline e sem cache novo, volta ao que tinha
-          return cachedResponse || caches.match('/offline.html');
-        });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request, { ignoreSearch: true });
 
-      // Retorna o cache antigo imediatamente (se houver), enquanto atualiza em background
-      return cachedResponse || fetchPromise;
+      const networkFetch = fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            cache.put(event.request, response.clone());
+          }
+          return response;
+        })
+        .catch(() => cached || caches.match('/offline.html');
+
+      // stale-while-revalidate: responde com o cache na hora (se existir)
+      // e atualiza o cache em segundo plano; sem cache, aguarda a rede.
+      return cached || networkFetch;
     })
   );
 });

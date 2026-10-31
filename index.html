@@ -6,7 +6,7 @@
   <title>Kit Digital de Resistência — Modos Inteligentes</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#e0dede" />
-  <link rel="manifest" href="manifest.json" />
+  <link id="manifest-link" rel="manifest" />
   <style>
     :root {
       --bg-color: #f5f5f5;
@@ -741,17 +741,40 @@ function calcSolve() {
         calcExpression = "";
     }
 }
+
+ /* ---------- manifest inline (data URI) — escopo/instalação próprios ---------- */
+  var manifest = {
+    name: "Kit Resist",
+    short_name: "Kit",
+    description: "Uma referência.",
+    start_url: ".",
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#1e1e1e",
+    theme_color: "#e0dcdc",
+    icons: [
+      { src: iconAny, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: iconAny, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: iconMaskable, sizes: "512x512", type: "image/png", purpose: "maskable" }
+    ]
+  };
+  document.getElementById("manifest-link").href =
+    "data:application/manifest+json," + encodeURIComponent(JSON.stringify(manifest));
+
   /************************************************************************
    * Signal panel and service worker registration (safe)
    ************************************************************************/
   // Signal buttons already wired inline to emitirSinal
   if ('serviceWorker' in navigator) {
-    window.addEventListener('DOMContentLoaded', function () {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(reg=>console.log('SW registrado:', reg.scope))
-        .catch(err=>console.log('SW erro:', err));
-    });
-  }
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('service-worker.js');
+      console.log('Service Worker registrado com sucesso:', registration.scope);
+    } catch (error) {
+      console.error('Falha ao registrar o Service Worker:', error);
+    }
+  });
+}
   </script>
 </body>
 </html>
