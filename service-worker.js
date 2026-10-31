@@ -38,7 +38,8 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached || cache.match('/offline.html');
+        //.catch(() => cached || cache.match('/offline.html');
+        .catch(() => cached);
 
       // stale-while-revalidate: responde com o cache na hora (se existir)
       // e atualiza o cache em segundo plano; sem cache, aguarda a rede.
